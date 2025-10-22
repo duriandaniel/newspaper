@@ -1,0 +1,52 @@
+name: Generate ASX PSV
+
+on:
+  schedule:
+    # Runs hourly (UTC). Sydney is UTC+10/+11, so adjust your expectations.
+    - cron: "0 * * * *"
+  workflow_dispatch: {}  # manual run for testing
+
+permissions:
+  contents: write   # needed to push the updated file
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run notebook to regenerate PSV
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LOCAL_TZ: ${{ vars.LOCAL_TZ }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          RETRY_LIMIT: "3"
+          VALIDATION_RETRIES: "2"
+        run: |
+          # Execute notebook headlessly; it must write ./asx.psv
+          papermill notebooks/generate_asx.ipynb out.ipynb
+
+      - name: Commit changes if any
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain asx.psv)" ]]; then
+            git add asx.psv
+            git commit -m "ci: regenerate asx.psv [skip ci]"
+            git push
+          else
+            echo "No changes to asx.psv"
+          fi
