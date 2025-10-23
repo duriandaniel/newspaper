@@ -3,7 +3,7 @@ name: Generate ASX PSV
 on:
   schedule:
     # Runs hourly (UTC). Sydney is UTC+10/+11, so adjust your expectations.
-    - cron: "0 * * * *"
+    # - cron: "0 * * * *"
   workflow_dispatch: {}  # manual run for testing
 
 permissions:
